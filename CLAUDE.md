@@ -1,10 +1,15 @@
 # Neon Rain - Lofi Track
 
+A programmatic cyberpunk lofi beat built with Tone.js.
+
 ## Vibe
 Cyberpunk lofi - neon-lit streets at 2AM, rain on windows, city hum. Dark but energetic.
 
+## Quick Start
+Open `index.html` in a browser. Click PLAY.
+
 ## Reference
-Use ~/lofi-development-docs as cookbook for patterns and recipes.
+Use ~/lofi-development-docs as cookbook for Tone.js patterns and lofi recipes.
 
 ## Technical Specs
 - **Key**: F minor (dark, moody)
@@ -44,3 +49,20 @@ Fm7 → Db maj7 → Ab maj7 → Eb7
 - Drums: Harder transients than 3AM Thoughts, more attack
 - Pads: Saw through phaser + heavy reverb
 - Rain: White noise, bandpass filtered ~1-3kHz, stereo spread
+
+## What's Built
+Single `index.html` with:
+- Complete 3:38 track with 7 sections
+- All instruments (kick, snare, hihat, arp, pad, bass, lead)
+- Effects chain (bitcrusher, phaser, ping-pong delay, reverb)
+- Rain ambience layer
+- Cyberpunk-themed UI with neon gradient title
+
+## Ideas to Explore
+- [ ] Add vinyl crackle layer alongside rain
+- [ ] Try different arp patterns (up/down vs random)
+- [ ] Experiment with tempo (try 92-96 for more energy)
+- [ ] Add a counter-melody or harmony line
+- [ ] Try different chord voicings (add 9ths/11ths)
+- [ ] Add automation to bitcrusher bits during sections
+- [ ] Create an alternate "chill" version at 78 BPM
