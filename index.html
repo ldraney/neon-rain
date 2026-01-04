@@ -1,0 +1,713 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Neon Rain - Lofi Track</title>
+  <script src="https://unpkg.com/tone@14"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Courier New', monospace;
+      background: linear-gradient(180deg, #0a0612 0%, #1a0a2e 40%, #0f1a2a 100%);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: #e0e0e0;
+      overflow: hidden;
+    }
+
+    /* Rain effect */
+    .rain {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      opacity: 0.15;
+      background: repeating-linear-gradient(
+        transparent,
+        transparent 3px,
+        rgba(120, 200, 255, 0.03) 3px,
+        rgba(120, 200, 255, 0.03) 4px
+      );
+      animation: rain 0.3s linear infinite;
+    }
+
+    @keyframes rain {
+      0% { background-position: 0 0; }
+      100% { background-position: 20px 40px; }
+    }
+
+    .container {
+      text-align: center;
+      padding: 2rem;
+      position: relative;
+      z-index: 1;
+    }
+
+    h1 {
+      font-size: 3.5rem;
+      font-weight: 300;
+      letter-spacing: 0.4em;
+      margin-bottom: 0.5rem;
+      background: linear-gradient(90deg, #ff00ff, #00ffff, #ff00ff);
+      background-size: 200% auto;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      animation: neon-shift 3s linear infinite;
+      text-shadow: 0 0 40px rgba(255, 0, 255, 0.5);
+    }
+
+    @keyframes neon-shift {
+      0% { background-position: 0% center; }
+      100% { background-position: 200% center; }
+    }
+
+    .subtitle {
+      font-size: 0.9rem;
+      color: #666;
+      margin-bottom: 3rem;
+      letter-spacing: 0.3em;
+    }
+
+    #playBtn {
+      background: transparent;
+      border: 1px solid #ff00ff44;
+      color: #aa88cc;
+      padding: 1rem 3rem;
+      font-size: 1rem;
+      font-family: inherit;
+      letter-spacing: 0.3em;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    #playBtn::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255, 0, 255, 0.1), transparent);
+      transition: left 0.5s;
+    }
+
+    #playBtn:hover::before {
+      left: 100%;
+    }
+
+    #playBtn:hover {
+      border-color: #ff00ff88;
+      color: #ff88ff;
+      box-shadow: 0 0 30px rgba(255, 0, 255, 0.3), 0 0 60px rgba(0, 255, 255, 0.1);
+    }
+
+    .status {
+      margin-top: 2rem;
+      font-size: 0.8rem;
+      color: #555;
+      letter-spacing: 0.1em;
+    }
+
+    .section-display {
+      margin-top: 1rem;
+      font-size: 1.2rem;
+      color: #00cccc;
+      letter-spacing: 0.25em;
+      min-height: 1.5em;
+      text-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+    }
+
+    .progress-bar {
+      width: 300px;
+      height: 2px;
+      background: #222;
+      margin: 2rem auto;
+      position: relative;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #ff00ff, #00ffff);
+      width: 0%;
+      transition: width 0.1s linear;
+      box-shadow: 0 0 10px rgba(255, 0, 255, 0.5);
+    }
+
+    .time-display {
+      font-size: 0.75rem;
+      color: #444;
+      margin-top: 0.5rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="rain"></div>
+
+  <div class="container">
+    <h1>NEON RAIN</h1>
+    <p class="subtitle">cyberpunk lofi</p>
+
+    <button id="playBtn">PLAY</button>
+
+    <div class="progress-bar">
+      <div class="progress-fill" id="progress"></div>
+    </div>
+
+    <div class="time-display" id="time">0:00 / 3:00</div>
+
+    <div class="section-display" id="section"></div>
+
+    <p class="status" id="status">click to jack in</p>
+  </div>
+
+  <script>
+    // ============================================
+    // NEON RAIN - Cyberpunk Lofi
+    // Key: F minor | Tempo: 88 BPM | Length: ~3:00
+    // ============================================
+
+    // === TRANSPORT CONFIG ===
+    Tone.Transport.bpm.value = 88;
+    Tone.Transport.swing = 0.12;
+    Tone.Transport.swingSubdivision = '16n';
+
+    // === HUMANIZATION HELPERS ===
+    function humanize(time, ms = 12) {
+      return time + (Math.random() - 0.5) * (ms / 1000);
+    }
+
+    function humanVelocity(base = 0.8, variance = 0.12) {
+      return Math.max(0.3, Math.min(1, base + (Math.random() - 0.5) * variance));
+    }
+
+    // === EFFECTS CHAIN ===
+
+    // Master filter
+    const masterFilter = new Tone.Filter({
+      frequency: 1000,
+      type: 'lowpass',
+      rolloff: -12,
+      Q: 1.5
+    }).toDestination();
+
+    // Reverb
+    const reverb = new Tone.Reverb({
+      decay: 4,
+      wet: 0.45
+    });
+
+    // Delay (dotted 8th)
+    const delay = new Tone.PingPongDelay({
+      delayTime: '8n.',
+      feedback: 0.35,
+      wet: 0.25
+    });
+
+    // Bitcrusher for that lo-fi digital grit
+    const bitcrusher = new Tone.BitCrusher({
+      bits: 8
+    });
+
+    // Phaser for movement
+    const phaser = new Tone.Phaser({
+      frequency: 0.3,
+      octaves: 3,
+      baseFrequency: 800,
+      wet: 0.4
+    });
+
+    // Stereo widener
+    const widener = new Tone.StereoWidener({
+      width: 0.7
+    });
+
+    // === RAIN AMBIENCE ===
+    const rain = new Tone.Noise('white');
+    const rainFilter = new Tone.Filter({
+      frequency: 2000,
+      type: 'bandpass',
+      Q: 0.8
+    });
+    const rainGain = new Tone.Gain(0.12);
+    const rainPanner = new Tone.AutoPanner({
+      frequency: 0.1,
+      depth: 0.3
+    }).start();
+
+    // === INSTRUMENTS ===
+
+    // Kick - punchy
+    const kick = new Tone.MembraneSynth({
+      pitchDecay: 0.03,
+      octaves: 7,
+      oscillator: { type: 'sine' },
+      envelope: {
+        attack: 0.001,
+        decay: 0.2,
+        sustain: 0,
+        release: 0.3
+      }
+    });
+    kick.volume.value = -Infinity;
+
+    // Snare - crispier
+    const snare = new Tone.NoiseSynth({
+      noise: { type: 'white' },
+      envelope: {
+        attack: 0.001,
+        decay: 0.1,
+        sustain: 0,
+        release: 0.05
+      }
+    });
+    const snareFilter = new Tone.Filter({
+      frequency: 6000,
+      type: 'lowpass'
+    });
+    snare.volume.value = -Infinity;
+
+    // Hi-hat
+    const hihat = new Tone.MetalSynth({
+      frequency: 250,
+      envelope: { attack: 0.001, decay: 0.03, release: 0.01 },
+      harmonicity: 5.1,
+      modulationIndex: 40,
+      resonance: 5000,
+      octaves: 1.2
+    });
+    hihat.volume.value = -Infinity;
+
+    // Arpeggio synth - square wave, bitcrushed
+    const arp = new Tone.Synth({
+      oscillator: { type: 'square' },
+      envelope: {
+        attack: 0.005,
+        decay: 0.1,
+        sustain: 0.3,
+        release: 0.2
+      }
+    });
+    arp.volume.value = -Infinity;
+
+    // Pad - saw through phaser
+    const pad = new Tone.PolySynth(Tone.Synth, {
+      oscillator: { type: 'sawtooth' },
+      envelope: {
+        attack: 0.5,
+        decay: 0.3,
+        sustain: 0.6,
+        release: 1.5
+      }
+    });
+    pad.volume.value = -14;
+
+    // Bass - saw with filter
+    const bass = new Tone.MonoSynth({
+      oscillator: { type: 'sawtooth' },
+      envelope: {
+        attack: 0.01,
+        decay: 0.2,
+        sustain: 0.5,
+        release: 0.3
+      },
+      filterEnvelope: {
+        attack: 0.01,
+        decay: 0.2,
+        sustain: 0.3,
+        release: 0.3,
+        baseFrequency: 200,
+        octaves: 2.5
+      }
+    });
+    bass.volume.value = -Infinity;
+
+    // Lead melody
+    const lead = new Tone.Synth({
+      oscillator: { type: 'triangle' },
+      envelope: {
+        attack: 0.08,
+        decay: 0.2,
+        sustain: 0.4,
+        release: 0.8
+      }
+    });
+    lead.volume.value = -Infinity;
+
+    // === AUDIO ROUTING ===
+    async function setupAudio() {
+      await reverb.generate();
+
+      // Effects chain
+      reverb.connect(masterFilter);
+      delay.connect(masterFilter);
+      delay.connect(reverb);
+      bitcrusher.connect(delay);
+      phaser.connect(reverb);
+      widener.connect(masterFilter);
+
+      // Rain chain
+      rain.connect(rainFilter);
+      rainFilter.connect(rainPanner);
+      rainPanner.connect(rainGain);
+      rainGain.toDestination();
+
+      // Drums - direct to master (punchy)
+      kick.connect(masterFilter);
+      snare.connect(snareFilter);
+      snareFilter.connect(masterFilter);
+      hihat.connect(masterFilter);
+
+      // Arp through bitcrusher
+      arp.connect(bitcrusher);
+
+      // Pad through phaser
+      pad.connect(phaser);
+      pad.connect(widener);
+
+      // Bass direct
+      bass.connect(masterFilter);
+
+      // Lead through delay + reverb
+      lead.connect(delay);
+      lead.connect(reverb);
+    }
+
+    // === CHORD PROGRESSION ===
+    // Fm7 → Dbmaj7 → Abmaj7 → Eb7
+    const chordProgression = [
+      { notes: ['F3', 'Ab3', 'C4', 'Eb4'], root: 'F', name: 'Fm7' },
+      { notes: ['Db3', 'F3', 'Ab3', 'C4'], root: 'Db', name: 'Dbmaj7' },
+      { notes: ['Ab2', 'C3', 'Eb3', 'G3'], root: 'Ab', name: 'Abmaj7' },
+      { notes: ['Eb3', 'G3', 'Bb3', 'Db4'], root: 'Eb', name: 'Eb7' }
+    ];
+
+    // Arp notes for each chord (16th note patterns)
+    const arpPatterns = [
+      ['F4', 'Ab4', 'C5', 'Eb5', 'C5', 'Ab4', 'F4', 'Eb4'],  // Fm7
+      ['Db4', 'F4', 'Ab4', 'C5', 'Ab4', 'F4', 'Db4', 'C4'],   // Dbmaj7
+      ['Ab3', 'C4', 'Eb4', 'G4', 'Eb4', 'C4', 'Ab3', 'G3'],   // Abmaj7
+      ['Eb4', 'G4', 'Bb4', 'Db5', 'Bb4', 'G4', 'Eb4', 'Db4']  // Eb7
+    ];
+
+    // === PATTERNS ===
+
+    // Pad loop (4 bars)
+    let padIndex = 0;
+    const padLoop = new Tone.Loop((time) => {
+      const chord = chordProgression[padIndex % 4];
+      const hTime = humanize(time, 15);
+      pad.triggerAttackRelease(chord.notes, '1n', hTime, humanVelocity(0.45, 0.1));
+      padIndex++;
+    }, '1n');
+
+    // Arp loop (runs every 16th)
+    let arpChordIndex = 0;
+    let arpNoteIndex = 0;
+    const arpLoop = new Tone.Loop((time) => {
+      if (arp.volume.value > -50) {
+        const pattern = arpPatterns[arpChordIndex % 4];
+        const note = pattern[arpNoteIndex % 8];
+        const hTime = humanize(time, 8);
+        const vel = arpNoteIndex % 4 === 0 ? 0.7 : humanVelocity(0.45, 0.15);
+        arp.triggerAttackRelease(note, '32n', hTime, vel);
+      }
+      arpNoteIndex++;
+      if (arpNoteIndex % 16 === 0) arpChordIndex++; // Change chord every bar
+    }, '16n');
+
+    // Bass loop (syncopated)
+    const bassNotes = [
+      { time: '0:0:0', note: 'F1', dur: '8n' },
+      { time: '0:0:3', note: 'F1', dur: '16n' },
+      { time: '0:2:0', note: 'F2', dur: '8n' },
+      { time: '1:0:0', note: 'Db1', dur: '8n' },
+      { time: '1:0:3', note: 'Db1', dur: '16n' },
+      { time: '1:2:2', note: 'Db2', dur: '8n' },
+      { time: '2:0:0', note: 'Ab1', dur: '8n' },
+      { time: '2:1:0', note: 'Ab1', dur: '16n' },
+      { time: '2:2:2', note: 'Ab1', dur: '8n' },
+      { time: '3:0:0', note: 'Eb1', dur: '8n' },
+      { time: '3:0:3', note: 'Eb2', dur: '16n' },
+      { time: '3:2:0', note: 'Eb1', dur: '8n' }
+    ];
+
+    const bassLoop = new Tone.Part((time, event) => {
+      if (bass.volume.value > -50) {
+        const hTime = humanize(time, 10);
+        bass.triggerAttackRelease(event.note, event.dur, hTime, humanVelocity(0.8, 0.1));
+      }
+    }, bassNotes);
+    bassLoop.loop = true;
+    bassLoop.loopEnd = '4m';
+
+    // Drum pattern (1 bar)
+    const drumLoop = new Tone.Part((time, event) => {
+      const hTime = humanize(time, event.type === 'kick' ? 5 : 10);
+      const hVel = humanVelocity(event.vel, 0.1);
+
+      switch(event.type) {
+        case 'kick':
+          if (kick.volume.value > -50) {
+            kick.triggerAttackRelease('F0', '16n', hTime, hVel);
+          }
+          break;
+        case 'snare':
+          if (snare.volume.value > -50) {
+            snare.triggerAttackRelease('16n', hTime, hVel);
+          }
+          break;
+        case 'hihat':
+          if (hihat.volume.value > -50) {
+            hihat.triggerAttackRelease('32n', hTime, hVel);
+          }
+          break;
+      }
+    }, [
+      // Kick - four on the floor with syncopation
+      { time: '0:0:0', type: 'kick', vel: 0.95 },
+      { time: '0:1:0', type: 'kick', vel: 0.6 },
+      { time: '0:2:0', type: 'kick', vel: 0.85 },
+      { time: '0:2:3', type: 'kick', vel: 0.5 },
+      // Snare
+      { time: '0:1:0', type: 'snare', vel: 0.85 },
+      { time: '0:3:0', type: 'snare', vel: 0.9 },
+      { time: '0:3:2', type: 'snare', vel: 0.3 },  // ghost
+      // Hi-hats (16th notes with accents)
+      { time: '0:0:0', type: 'hihat', vel: 0.7 },
+      { time: '0:0:2', type: 'hihat', vel: 0.25 },
+      { time: '0:1:0', type: 'hihat', vel: 0.6 },
+      { time: '0:1:2', type: 'hihat', vel: 0.2 },
+      { time: '0:2:0', type: 'hihat', vel: 0.65 },
+      { time: '0:2:2', type: 'hihat', vel: 0.25 },
+      { time: '0:3:0', type: 'hihat', vel: 0.6 },
+      { time: '0:3:2', type: 'hihat', vel: 0.2 }
+    ]);
+    drumLoop.loop = true;
+    drumLoop.loopEnd = '1m';
+
+    // Lead melody (for DROP B and DROP C)
+    const melodyLoop = new Tone.Part((time, event) => {
+      if (lead.volume.value > -50) {
+        const hTime = humanize(time, 20);
+        lead.triggerAttackRelease(event.note, event.dur, hTime, humanVelocity(event.vel, 0.15));
+      }
+    }, [
+      { time: '0:0:0', note: 'C5', dur: '8n', vel: 0.6 },
+      { time: '0:1:2', note: 'Bb4', dur: '8n', vel: 0.5 },
+      { time: '0:2:2', note: 'Ab4', dur: '4n', vel: 0.55 },
+      { time: '1:1:0', note: 'G4', dur: '8n', vel: 0.5 },
+      { time: '1:2:0', note: 'F4', dur: '4n.', vel: 0.6 },
+      { time: '2:1:0', note: 'Eb4', dur: '8n', vel: 0.5 },
+      { time: '2:2:0', note: 'F4', dur: '8n', vel: 0.45 },
+      { time: '2:3:0', note: 'G4', dur: '4n', vel: 0.55 },
+      { time: '3:1:0', note: 'Ab4', dur: '4n', vel: 0.5 },
+      { time: '3:3:0', note: 'Bb4', dur: '8n', vel: 0.45 }
+    ]);
+    melodyLoop.loop = true;
+    melodyLoop.loopEnd = '4m';
+
+    // === SECTION DEFINITIONS ===
+    const sections = {
+      intro: {
+        name: 'INTRO',
+        filterFreq: 800,
+        reverbWet: 0.5,
+        rainVol: 0.15,
+        kick: -Infinity, snare: -Infinity, hihat: -Infinity,
+        arp: -18, pad: -16, bass: -Infinity, lead: -Infinity
+      },
+      build: {
+        name: 'BUILD',
+        filterFreq: 1400,
+        reverbWet: 0.45,
+        rainVol: 0.1,
+        kick: -12, snare: -Infinity, hihat: -20,
+        arp: -14, pad: -12, bass: -14, lead: -Infinity
+      },
+      dropA: {
+        name: 'DROP',
+        filterFreq: 2400,
+        reverbWet: 0.4,
+        rainVol: 0.08,
+        kick: -6, snare: -10, hihat: -16,
+        arp: -10, pad: -10, bass: -8, lead: -Infinity
+      },
+      dropB: {
+        name: 'DROP II',
+        filterFreq: 3000,
+        reverbWet: 0.4,
+        rainVol: 0.06,
+        kick: -5, snare: -9, hihat: -14,
+        arp: -9, pad: -9, bass: -7, lead: -12
+      },
+      break: {
+        name: 'BREAK',
+        filterFreq: 600,
+        reverbWet: 0.6,
+        rainVol: 0.18,
+        kick: -Infinity, snare: -Infinity, hihat: -25,
+        arp: -20, pad: -14, bass: -Infinity, lead: -Infinity
+      },
+      dropC: {
+        name: 'PEAK',
+        filterFreq: 3500,
+        reverbWet: 0.35,
+        rainVol: 0.05,
+        kick: -4, snare: -8, hihat: -12,
+        arp: -8, pad: -8, bass: -6, lead: -10
+      },
+      outro: {
+        name: 'OUTRO',
+        filterFreq: 700,
+        reverbWet: 0.55,
+        rainVol: 0.2,
+        kick: -Infinity, snare: -Infinity, hihat: -Infinity,
+        arp: -22, pad: -18, bass: -Infinity, lead: -Infinity
+      }
+    };
+
+    function applySection(sectionName, time) {
+      const config = sections[sectionName];
+      const ramp = 1.0;
+
+      document.getElementById('section').textContent = config.name;
+
+      masterFilter.frequency.rampTo(config.filterFreq, ramp, time);
+      reverb.wet.rampTo(config.reverbWet, ramp, time);
+      rainGain.gain.rampTo(config.rainVol, ramp, time);
+
+      kick.volume.rampTo(config.kick, ramp * 0.5, time);
+      snare.volume.rampTo(config.snare, ramp * 0.5, time);
+      hihat.volume.rampTo(config.hihat, ramp * 0.5, time);
+
+      arp.volume.rampTo(config.arp, ramp, time);
+      pad.volume.rampTo(config.pad, ramp, time);
+      bass.volume.rampTo(config.bass, ramp, time);
+      lead.volume.rampTo(config.lead, ramp, time);
+    }
+
+    // === SONG SCHEDULE ===
+    // INTRO(8) - BUILD(8) - DROP A(16) - DROP B(16) - BREAK(8) - DROP C(16) - OUTRO(8) = 80 bars
+
+    function scheduleSong() {
+      Tone.Transport.schedule((time) => applySection('intro', time), '0:0:0');
+      Tone.Transport.schedule((time) => applySection('build', time), '8:0:0');
+      Tone.Transport.schedule((time) => applySection('dropA', time), '16:0:0');
+      Tone.Transport.schedule((time) => applySection('dropB', time), '32:0:0');
+
+      // Pre-break filter sweep
+      Tone.Transport.schedule((time) => {
+        masterFilter.frequency.rampTo(600, 2, time);
+      }, '46:0:0');
+
+      Tone.Transport.schedule((time) => applySection('break', time), '48:0:0');
+
+      // Build back up
+      Tone.Transport.schedule((time) => {
+        masterFilter.frequency.exponentialRampTo(3500, 2.5, time);
+        // Snare roll
+        for (let i = 0; i < 12; i++) {
+          snare.volume.value = -20 + i;
+          snare.triggerAttackRelease('32n', time + i * 0.07, 0.3 + i * 0.05);
+        }
+      }, '54:0:0');
+
+      Tone.Transport.schedule((time) => applySection('dropC', time), '56:0:0');
+
+      // Pre-outro
+      Tone.Transport.schedule((time) => {
+        masterFilter.frequency.rampTo(700, 3, time);
+      }, '70:0:0');
+
+      Tone.Transport.schedule((time) => applySection('outro', time), '72:0:0');
+
+      // End
+      Tone.Transport.schedule((time) => {
+        document.getElementById('section').textContent = '';
+        document.getElementById('status').textContent = 'signal lost';
+        Tone.Transport.stop();
+        rain.stop();
+        isPlaying = false;
+        document.getElementById('playBtn').textContent = 'PLAY';
+      }, '80:0:0');
+    }
+
+    // === UI & PLAYBACK ===
+    let isPlaying = false;
+    let isInitialized = false;
+    const totalBars = 80;
+    const barDuration = (60 / 88) * 4;
+    const totalDuration = totalBars * barDuration;
+
+    async function init() {
+      if (isInitialized) return;
+
+      document.getElementById('status').textContent = 'initializing...';
+
+      await setupAudio();
+      scheduleSong();
+
+      padLoop.start(0);
+      arpLoop.start(0);
+      bassLoop.start(0);
+      drumLoop.start(0);
+      melodyLoop.start(0);
+
+      isInitialized = true;
+      document.getElementById('status').textContent = 'ready';
+    }
+
+    function formatTime(seconds) {
+      const mins = Math.floor(seconds / 60);
+      const secs = Math.floor(seconds % 60);
+      return `${mins}:${secs.toString().padStart(2, '0')}`;
+    }
+
+    function updateProgress() {
+      if (!isPlaying) return;
+
+      const currentTime = Tone.Transport.seconds;
+      const progress = (currentTime / totalDuration) * 100;
+
+      document.getElementById('progress').style.width = `${Math.min(progress, 100)}%`;
+      document.getElementById('time').textContent =
+        `${formatTime(currentTime)} / ${formatTime(totalDuration)}`;
+
+      requestAnimationFrame(updateProgress);
+    }
+
+    document.getElementById('playBtn').addEventListener('click', async () => {
+      await Tone.start();
+      await init();
+
+      if (isPlaying) {
+        Tone.Transport.pause();
+        rain.stop();
+        isPlaying = false;
+        document.getElementById('playBtn').textContent = 'PLAY';
+        document.getElementById('status').textContent = 'paused';
+      } else {
+        rain.start();
+        Tone.Transport.start();
+        isPlaying = true;
+        document.getElementById('playBtn').textContent = 'PAUSE';
+        document.getElementById('status').textContent = 'streaming';
+        updateProgress();
+      }
+    });
+  </script>
+</body>
+</html>
